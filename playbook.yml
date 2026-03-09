@@ -1,0 +1,7 @@
+- name: Universal WireGuard Setup (Server + Client)
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - docker
+    - wireguard
