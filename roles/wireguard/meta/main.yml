@@ -1,0 +1,15 @@
+# meta/main.yml
+---
+galaxy_info:
+  role_name: wireguard
+  author: leshevi
+  description: A role for installing wireguard
+  license: license (GPLv3, MIT, etc)
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+  galaxy_tags:
+    - wireguard
+dependencies: []

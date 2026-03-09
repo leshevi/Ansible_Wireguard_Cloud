@@ -1,0 +1,6 @@
+wireguard_web_ui_password: "SecurePassword123" # python3 -c 'from passlib.hash import bcrypt; print(bcrypt.using(rounds=12).hash("SecurePassword123"))'
+wireguard_client_name: "ansible-node-01"
+wireguard_server_internal_ip: "10.8.0.1"
+wireguard_wg_token: ""
+wireguard_wg_id: "id пользователя от которого посылается сообщение"
+wireguard_service: "/usr/local/bin/"
