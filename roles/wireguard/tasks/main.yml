@@ -70,13 +70,25 @@
         - { port: '49210', proto: 'udp' }
         - { port: '49211', proto: 'tcp' }
 
-    - name: Setup NAT (Masquerade)
-      ansible.builtin.iptables:
-        table: nat
-        chain: POSTROUTING
-        out_interface: "{{ ansible_facts['default_ipv4']['interface'] }}"
-        jump: MASQUERADE
-      notify: Save Iptables
+    - name: Allow forwarding in UFW
+      ansible.builtin.lineinfile:
+        path: /etc/default/ufw
+        regexp: '^DEFAULT_FORWARD_POLICY='
+        line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+
+    - name: Add NAT rules to UFW before.rules
+      ansible.builtin.blockinfile:
+        path: /etc/ufw/before.rules
+        insertbefore: BOF
+        block: |
+          *nat
+          :POSTROUTING ACCEPT [0:0]
+          -A POSTROUTING -o {{ ansible_facts['default_ipv4']['interface'] }} -j MASQUERADE
+          COMMIT
+
+    - name: Reload UFW to apply changes
+      community.general.ufw:
+        state: reloaded
 
     - name: Create WG Network
       community.docker.docker_network:
@@ -227,7 +239,7 @@
     - name: Run Wg-notifier Container
       community.docker.docker_container:
         name: wg-monitor
-        image: leshevi1/wg-monitor:v01
+        image: leshevi1/wg-monitor:latest
         state: started
         restart_policy: always
         volumes: ["/etc/wireguard:/etc/wireguard:ro"]
