@@ -225,6 +225,71 @@
         msg: "Connection Successful! Client can reach Server at {{ wireguard_server_internal_ip }}"
       when: wireguard_ping_res.rc == 0
 
+- name: Configure WireGuard Server
+  when: inventory_hostname == "wireproxy-server"
+  block:
+    - name: Linux | Creating folders
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [/etc/wireproxy, /usr/local/bin]
+
+    - name: Linux | Downloading and unpacking
+      ansible.builtin.unarchive:
+        src: "https://github.com/windtf/wireproxy/releases/download/v1.1.2/wireproxy_linux_amd64.tar.gz"
+        dest: "/usr/local/bin"
+        remote_src: true
+
+    - name: Linux | Creating a config
+      ansible.builtin.copy:
+        content: |
+          [Socks5]
+          BindAddress = 127.0.0.1:1080
+          {{ hostvars['wir-server']['wireproxy_client_config_response'].content }}
+        dest: /etc/wireproxy/config.conf
+        mode: '0600'
+
+    - name: Linux | Configuring the Endpoint Port
+      ansible.builtin.lineinfile:
+        path: /etc/wireproxy/config.conf
+        regexp: "^Endpoint = .*"
+        line: "Endpoint = {{ hostvars['wir-server']['ansible_host'] }}:49210"
+
+    - name: Linux | Creating a Systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/wireproxy.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Wireproxy Service
+          After=network.target
+          [Service]
+          ExecStart=/usr/local/bin/wireproxy --config /etc/wireproxy/config.conf
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Linux | Start of service
+      ansible.builtin.systemd:
+        name: wireproxy
+        state: restarted
+        enabled: true
+        daemon_reload: true
+
+    - name: Checking external IP via SOCKS5 proxy
+      ansible.builtin.uri:
+        url: https://ifconfig.me
+        method: GET
+        return_content: true
+      environment:
+        ALL_PROXY: "socks5h://127.0.0.1:1080"
+      register: wireproxy_response
+
+    - name: IP output
+      ansible.builtin.debug:
+        msg: "Ваш IP: {{ wireproxy_response.content }}"
+
 - name: Setup WireGuard Backup and monitor telegram
   when: inventory_hostname == "wir-server"
   block:
